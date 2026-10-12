@@ -2,13 +2,16 @@
 import { useEffect, useState } from 'preact/hooks'
 import { AUTOSAVE_MS, TICK_MS } from './game/config'
 import { deserialize, newGame, serialize } from './game/save'
-import { advance } from './game/tick'
+import { advance, type Blocker } from './game/tick'
 import type { GameState } from './game/types'
 
 const KEY = 'idle-realm-save'
 
 let state = load()
 const listeners = new Set<() => void>()
+
+/** Why the last action stopped by itself; cleared by the next thing the player does. */
+export const notice: { stopped: Blocker | null } = { stopped: null }
 
 function load(): GameState {
   let raw: string | null = null
@@ -34,9 +37,22 @@ export function save() {
   }
 }
 
-export function update(fn: (s: GameState) => GameState) {
-  state = fn(state)
+function emit() {
   listeners.forEach((l) => l())
+}
+
+/** Apply a player action. */
+export function update(fn: (s: GameState) => GameState) {
+  notice.stopped = null
+  state = fn(state)
+  emit()
+}
+
+function tickNow() {
+  const result = advance(state, Date.now())
+  if (result.stopped) notice.stopped = result.stopped
+  state = result.state
+  emit()
 }
 
 export function useGame(): GameState {
@@ -50,7 +66,7 @@ export function useGame(): GameState {
 }
 
 export function startLoop() {
-  setInterval(() => update((s) => advance(s, Date.now()).state), TICK_MS)
+  setInterval(tickNow, TICK_MS)
   setInterval(save, AUTOSAVE_MS)
   // mobile browsers kill background pages without warning: save the moment we are hidden
   document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && save())

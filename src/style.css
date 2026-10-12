@@ -35,9 +35,6 @@ header {
   position: sticky;
   top: 0;
   z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
   background: var(--bg);
   border-bottom: 1px solid var(--line);
@@ -171,3 +168,84 @@ button.card:disabled {
 .tier-4 { --tier: #e2b659; }
 .tier-5 { --tier: #e8794a; }
 .tier-6 { --tier: #e85a8a; }
+
+/* ---- current action, in the sticky header ---- */
+.now {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 12px;
+  min-height: 44px;
+  margin: 8px 0 0;
+}
+
+.now .bar {
+  grid-column: 1 / -1;
+}
+
+.now button {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ---- skill picker and bottom tabs ---- */
+nav {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+}
+
+nav button {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+nav button span {
+  font-size: 1.3rem;
+}
+
+nav button.on {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
+nav button.busy small {
+  color: var(--green);
+}
+
+.skills {
+  margin-top: 12px;
+}
+
+.tabs {
+  position: sticky;
+  bottom: 0;
+  gap: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+
+.tabs button {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.tabs button.on {
+  color: var(--gold);
+}

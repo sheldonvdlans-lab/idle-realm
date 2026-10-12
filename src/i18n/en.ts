@@ -51,6 +51,8 @@ export const en = {
     uses: 'Uses',
     idle: 'Nothing in progress — pick an action',
     stop: 'Stop',
+    stopped: 'Stopped',
+    tabs: { skills: 'Skills', bank: 'Bank' },
     bank: 'Bank',
     bankEmpty: 'Your bank is empty.',
     slots: (used: number, total: number) => `${used} / ${total} slots`,
