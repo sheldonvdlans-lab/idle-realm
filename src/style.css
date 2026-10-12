@@ -315,7 +315,8 @@ dialog .btn {
   width: 100%;
 }
 
-textarea {
+textarea,
+input {
   display: block;
   width: 100%;
   padding: 10px;
@@ -324,6 +325,18 @@ textarea {
   background: var(--panel);
   color: var(--text);
   font: 0.8rem/1.4 ui-monospace, monospace;
+}
+
+textarea {
   word-break: break-all;
   resize: vertical;
+}
+
+input {
+  font-size: 1rem; /* below 16px iOS zooms the page on focus */
+}
+
+.btn.danger {
+  border-color: var(--warn);
+  color: var(--warn);
 }

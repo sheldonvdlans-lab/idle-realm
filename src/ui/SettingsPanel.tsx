@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import { exportSave, importSave } from '../game/save'
+import { exportSave, importSave, newGame } from '../game/save'
 import type { GameState } from '../game/types'
 import { t } from '../i18n'
 import { replaceGame } from '../store'
@@ -7,6 +7,7 @@ import { replaceGame } from '../store'
 export function SettingsPanel({ state }: { state: GameState }) {
   const [code, setCode] = useState('')
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
+  const [typed, setTyped] = useState<string | null>(null) // null: reset not started
 
   const doExport = async () => {
     const exported = exportSave(state)
@@ -30,6 +31,12 @@ export function SettingsPanel({ state }: { state: GameState }) {
     replaceGame(imported)
     setCode('')
     setMessage({ text: t.ui.imported, ok: true })
+  }
+
+  const doReset = () => {
+    replaceGame(newGame(Date.now()))
+    setTyped(null)
+    setMessage({ text: t.ui.resetDone, ok: true }) // the old save code stays in the box
   }
 
   return (
@@ -56,6 +63,40 @@ export function SettingsPanel({ state }: { state: GameState }) {
         <p class={message.ok ? 'muted' : 'warn'} role="status">
           {message.text}
         </p>
+      )}
+
+      <h2>🗑️ {t.ui.reset}</h2>
+      {typed === null ? (
+        <button
+          class="btn danger"
+          onClick={() => {
+            doExport() // step 1: put a way back in the box (and on the clipboard) before anything is deleted
+            setTyped('')
+          }}
+        >
+          {t.ui.resetStart}
+        </button>
+      ) : (
+        <>
+          <p class="warn">{t.ui.resetWarning}</p>
+          <input
+            value={typed}
+            placeholder={t.ui.resetPrompt(t.ui.resetWord)}
+            aria-label={t.ui.resetPrompt(t.ui.resetWord)}
+            autocapitalize="characters"
+            autocomplete="off"
+            spellcheck={false}
+            onInput={(e) => setTyped(e.currentTarget.value)}
+          />
+          <div class="row">
+            <button class="btn" onClick={() => setTyped(null)}>
+              {t.ui.cancel}
+            </button>
+            <button class="btn danger" disabled={typed.trim() !== t.ui.resetWord} onClick={doReset}>
+              {t.ui.resetConfirm}
+            </button>
+          </div>
+        </>
       )}
     </section>
   )
