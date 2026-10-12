@@ -1,6 +1,6 @@
 // Glue between the pure game logic and the browser: clock, storage, re-render.
 import { useEffect, useState } from 'preact/hooks'
-import { AUTOSAVE_MS, TICK_MS } from './game/config'
+import { AUTOSAVE_MS, TICK_MS, WELCOME_MIN_MS } from './game/config'
 import { deserialize, newGame, serialize } from './game/save'
 import { advance, type Blocker } from './game/tick'
 import type { GameState } from './game/types'
@@ -10,8 +10,18 @@ const KEY = 'idle-realm-save'
 let state = load()
 const listeners = new Set<() => void>()
 
-/** Why the last action stopped by itself; cleared by the next thing the player does. */
-export const notice: { stopped: Blocker | null } = { stopped: null }
+/** What happened while the player was away: the state they left and how far its action got. */
+export interface Welcome {
+  before: GameState
+  elapsedMs: number
+  actions: number
+  stopped: Blocker | null
+}
+
+export const notice: {
+  stopped: Blocker | null // why the last action stopped by itself; cleared by the next thing the player does
+  welcome: Welcome | null
+} = { stopped: null, welcome: null }
 
 function load(): GameState {
   let raw: string | null = null
@@ -48,9 +58,19 @@ export function update(fn: (s: GameState) => GameState) {
   emit()
 }
 
+export function dismissWelcome() {
+  notice.welcome = null
+  emit()
+}
+
 function tickNow() {
-  const result = advance(state, Date.now())
-  if (result.stopped) notice.stopped = result.stopped
+  // A hidden page does not tick: the first tick after coming back covers the whole absence,
+  // exactly like reopening the app, so both get the same "welcome back".
+  if (document.visibilityState === 'hidden') return
+  const before = state
+  const { elapsedMs, actions, stopped, ...result } = advance(state, Date.now())
+  if (stopped) notice.stopped = stopped
+  if (before.active && elapsedMs >= WELCOME_MIN_MS) notice.welcome = { before, elapsedMs, actions, stopped }
   state = result.state
   emit()
 }
@@ -66,9 +86,10 @@ export function useGame(): GameState {
 }
 
 export function startLoop() {
+  tickNow() // catch up on offline time before the first render
   setInterval(tickNow, TICK_MS)
   setInterval(save, AUTOSAVE_MS)
   // mobile browsers kill background pages without warning: save the moment we are hidden
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && save())
+  document.addEventListener('visibilitychange', () => (document.visibilityState === 'hidden' ? save() : tickNow()))
   addEventListener('pagehide', save)
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buyUpgrade, sell } from './bank'
 import { ACTIONS, ITEMS, OFFLINE_CAP_MS, START_BANK_SLOTS, UPGRADES } from './config'
-import { formatNumber } from './format'
+import { formatDuration, formatNumber } from './format'
 import { deserialize, exportSave, importSave, newGame, serialize } from './save'
 import { actionTimeMs, advance, bankSlots, speedBonus, startAction, tick } from './tick'
 import type { GameState } from './types'
@@ -202,6 +202,15 @@ describe('save', () => {
       777,
     )
     expect(s).toEqual({ ...newGame(777), xp: { ...newGame(0).xp, fishing: 100 }, bank: { pine_log: 2 }, upgrades: { bank: 11 } })
+  })
+})
+
+describe('formatDuration', () => {
+  it('shows the two largest units', () => {
+    expect(formatDuration(45_000)).toBe('45s')
+    expect(formatDuration(200_000)).toBe('3m 20s')
+    expect(formatDuration(8_100_000)).toBe('2h 15m')
+    expect(formatDuration(OFFLINE_CAP_MS)).toBe('12h')
   })
 })
 

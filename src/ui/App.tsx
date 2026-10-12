@@ -9,6 +9,7 @@ import { notice, update, useGame } from '../store'
 import { BankPanel } from './BankPanel'
 import { GOLD, SKILL_ICON } from './icons'
 import { ShopPanel } from './ShopPanel'
+import { WelcomeBack } from './WelcomeBack'
 import { Bar, SkillPanel } from './SkillPanel'
 
 const TABS = { skills: '⚒️', bank: '🏦', shop: '🛒' } as const
@@ -50,6 +51,7 @@ export function App() {
         {tab === 'bank' && <BankPanel state={state} />}
         {tab === 'shop' && <ShopPanel state={state} />}
       </main>
+      {notice.welcome && <WelcomeBack welcome={notice.welcome} />}
       <nav class="tabs">
         {(Object.keys(TABS) as Tab[]).map((id) => (
           <button key={id} class={id === tab ? 'on' : ''} onClick={() => setTab(id)}>

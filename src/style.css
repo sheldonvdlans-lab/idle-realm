@@ -278,3 +278,39 @@ nav button.busy small {
 .tabs button.on {
   color: var(--gold);
 }
+
+/* ---- dialogs ---- */
+dialog {
+  width: min(92vw, 420px);
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+
+dialog h2 {
+  margin-top: 0;
+}
+
+dialog ul {
+  margin: 0 0 16px;
+  padding-left: 20px;
+}
+
+dialog li.muted {
+  margin: 0;
+  font-size: inherit;
+}
+
+dialog li strong {
+  color: var(--gold);
+}
+
+dialog .btn {
+  width: 100%;
+}
