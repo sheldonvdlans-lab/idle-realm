@@ -137,7 +137,7 @@ button.card:disabled {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  border: 2px solid var(--tier);
+  border: 2px solid var(--tier, var(--line));
   background: var(--bg);
   font-size: 1.3rem;
 }
@@ -183,14 +183,43 @@ button.card:disabled {
   grid-column: 1 / -1;
 }
 
-.now button {
+.btn {
+  min-height: 36px;
   padding: 6px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--panel);
+  background: var(--panel-hi);
   color: inherit;
   font: inherit;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gold {
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.row .btn {
+  flex: 1;
 }
 
 /* ---- skill picker and bottom tabs ---- */

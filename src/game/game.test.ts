@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { ACTIONS, ITEMS, OFFLINE_CAP_MS, START_BANK_SLOTS } from './config'
+import { buyUpgrade, sell } from './bank'
+import { ACTIONS, ITEMS, OFFLINE_CAP_MS, START_BANK_SLOTS, UPGRADES } from './config'
 import { formatNumber } from './format'
 import { deserialize, exportSave, importSave, newGame, serialize } from './save'
-import { actionTimeMs, advance, startAction, tick } from './tick'
+import { actionTimeMs, advance, bankSlots, speedBonus, startAction, tick } from './tick'
 import type { GameState } from './types'
 import { levelForXp, xpForLevel } from './xp'
 
@@ -98,6 +99,56 @@ describe('tick', () => {
   })
 })
 
+describe('bank and shop', () => {
+  it('prices follow tier × kind', () => {
+    expect(ITEMS.pine_log.sellPrice).toBe(2)
+    expect(ITEMS.copper_bar.sellPrice).toBe(6)
+    expect(ITEMS.voidglass_axe.sellPrice).toBe(1100)
+    expect(ITEMS.glimmerfin_cooked.sellPrice).toBe(110)
+  })
+
+  it('sells items for gold and frees the slot with the last one', () => {
+    const s = sell(game({ bank: { copper_bar: 10 } }), 'copper_bar', 4)
+    expect(s.bank).toEqual({ copper_bar: 6 })
+    expect(s.gold).toBe(24)
+    const all = sell(s, 'copper_bar', Infinity)
+    expect(all.bank).toEqual({})
+    expect(all.gold).toBe(60)
+  })
+
+  it('ignores impossible sales', () => {
+    const s = game({ bank: { copper_bar: 10 } })
+    for (const count of [0, -3, NaN, 0.5]) expect(sell(s, 'copper_bar', count)).toBe(s)
+    expect(sell(s, 'pine_log', 1)).toBe(s)
+  })
+
+  it('buys upgrades level by level until maxed', () => {
+    let s = game({ gold: 2499 })
+    expect(buyUpgrade(s, 'woodcutting')).toBe(s)
+    s = buyUpgrade(game({ gold: 300_000 }), 'woodcutting')
+    expect(s.gold).toBe(297_500)
+    s = buyUpgrade(buyUpgrade(s, 'woodcutting'), 'woodcutting')
+    expect(s.upgrades.woodcutting).toBe(3)
+    expect(s.gold).toBe(22_500)
+    expect(buyUpgrade(s, 'woodcutting')).toBe(s)
+    expect(buyUpgrade(s, 'nope')).toBe(s)
+  })
+
+  it('stacks the shop upgrade with the smithed tool, up to 40%', () => {
+    const s = game({ upgrades: { woodcutting: 3 }, bank: { voidglass_axe: 1 } })
+    expect(speedBonus(s, 'woodcutting')).toBeCloseTo(0.4)
+    expect(speedBonus(s, 'mining')).toBe(0)
+    expect(actionTimeMs(s, ACTIONS.chop_pine_log)).toBeCloseTo(1800)
+  })
+
+  it('bank upgrades add slots and double in cost', () => {
+    expect(UPGRADES.bank.costs.slice(0, 3)).toEqual([500, 1000, 2000])
+    expect(UPGRADES.bank.costs.at(-1)).toBe(512_000)
+    expect(bankSlots(game())).toBe(12)
+    expect(bankSlots(game({ upgrades: { bank: 11 } }))).toBe(Object.keys(ITEMS).length)
+  })
+})
+
 describe('offline progress', () => {
   const HOUR = 3_600_000
 
@@ -123,7 +174,7 @@ describe('offline progress', () => {
 })
 
 describe('save', () => {
-  const played = tick(chopping({ gold: 1234, lastSeen: 42 }), 10_000).state
+  const played = tick(chopping({ gold: 1234, lastSeen: 42, upgrades: { bank: 2, mining: 1 } }), 10_000).state
 
   it('round-trips through JSON and through the export string', () => {
     expect(deserialize(serialize(played))).toEqual(played)
@@ -144,12 +195,13 @@ describe('save', () => {
         xp: { woodcutting: -5, mining: 'lots', fishing: 100 },
         bank: { pine_log: 2.9, nope: 5, constructor: 5, oak_log: -1, copper_ore: null },
         gold: 1e999,
+        upgrades: { bank: 500, mining: -1, hax: 3 },
         active: { actionId: 'toString', progressMs: 5 },
         lastSeen: 'yesterday',
       }),
       777,
     )
-    expect(s).toEqual({ ...newGame(777), xp: { ...newGame(0).xp, fishing: 100 }, bank: { pine_log: 2 } })
+    expect(s).toEqual({ ...newGame(777), xp: { ...newGame(0).xp, fishing: 100 }, bank: { pine_log: 2 }, upgrades: { bank: 11 } })
   })
 })
 

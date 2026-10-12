@@ -1,4 +1,4 @@
-import { ACTIONS, ITEMS, SKILLS } from './config'
+import { ACTIONS, ITEMS, SKILLS, UPGRADES } from './config'
 import type { GameState } from './types'
 
 export const SAVE_VERSION = 1
@@ -34,6 +34,10 @@ export function deserialize(text: string, now = Date.now()): GameState {
     if (Object.hasOwn(ITEMS, id) && amount(count) >= 1) state.bank[id] = Math.floor(amount(count))
   }
   state.gold = Math.floor(amount(raw.gold))
+  for (const { id, costs } of Object.values(UPGRADES)) {
+    const level = Math.min(costs.length, Math.floor(amount(raw.upgrades?.[id])))
+    if (level) state.upgrades[id] = level
+  }
   const actionId = raw.active?.actionId
   if (typeof actionId === 'string' && Object.hasOwn(ACTIONS, actionId)) {
     state.active = { actionId, progressMs: amount(raw.active.progressMs) }

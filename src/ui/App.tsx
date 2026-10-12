@@ -3,13 +3,15 @@ import { ACTIONS, SKILLS } from '../game/config'
 import { actionTimeMs, stopAction } from '../game/tick'
 import type { GameState, SkillId } from '../game/types'
 import { levelForXp } from '../game/xp'
+import { formatNumber } from '../game/format'
 import { actionName, t } from '../i18n'
 import { notice, update, useGame } from '../store'
 import { BankPanel } from './BankPanel'
-import { SKILL_ICON } from './icons'
+import { GOLD, SKILL_ICON } from './icons'
+import { ShopPanel } from './ShopPanel'
 import { Bar, SkillPanel } from './SkillPanel'
 
-const TABS = { skills: '⚒️', bank: '🏦' } as const
+const TABS = { skills: '⚒️', bank: '🏦', shop: '🛒' } as const
 type Tab = keyof typeof TABS
 
 export function App() {
@@ -21,7 +23,12 @@ export function App() {
   return (
     <>
       <header>
-        <h1>{t.title}</h1>
+        <div class="top">
+          <h1>{t.title}</h1>
+          <span class="gold">
+            {GOLD} {formatNumber(state.gold)}
+          </span>
+        </div>
         <Now state={state} />
       </header>
       <main>
@@ -41,6 +48,7 @@ export function App() {
           </>
         )}
         {tab === 'bank' && <BankPanel state={state} />}
+        {tab === 'shop' && <ShopPanel state={state} />}
       </main>
       <nav class="tabs">
         {(Object.keys(TABS) as Tab[]).map((id) => (
@@ -69,7 +77,9 @@ function Now({ state }: { state: GameState }) {
       <span>
         {SKILL_ICON[def.skill]} {actionName(def)}
       </span>
-      <button onClick={() => update(stopAction)}>{t.ui.stop}</button>
+      <button class="btn" onClick={() => update(stopAction)}>
+        {t.ui.stop}
+      </button>
       <Bar value={state.active.progressMs / actionTimeMs(state, def)} />
     </div>
   )

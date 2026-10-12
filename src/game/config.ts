@@ -1,5 +1,5 @@
-// All balance lives in this file: XP curve, tiers, recipes, caps.
-import type { ActionDef, ItemDef, ItemKind, SkillId, Verb } from './types'
+// All balance lives in this file: XP curve, tiers, recipes, prices, shop, caps.
+import type { ActionDef, ItemDef, ItemKind, SkillId, UpgradeDef, Verb } from './types'
 
 // ---- XP curve: total xp for level L = floor(cubic·(L−1)³ + linear·(L−1)) ----
 export const MAX_LEVEL = 99
@@ -20,16 +20,36 @@ export const SMELT = { ore: 2, time: 1, xp: 2 } // 2 ore → 1 bar
 export const FORGE = { bars: 5, time: 5, xp: 5 } // 5 bars → 1 tool
 export const COOK = { fish: 3, logs: 1, time: 2, xp: 3 } // 3 fish + 1 log of the same tier → 3 cooked
 
+// ---- Economy: sell price = tier price × kind value, so an hour of play earns the same gold on any route ----
+export const TIER_PRICE = [2, 4, 7, 12, 20, 32, 55]
+export const KIND_VALUE: Record<ItemKind, number> = { log: 1, ore: 1, raw: 1, cooked: 2, bar: 3, axe: 20, pickaxe: 20, hook: 20 }
+
+// ---- Shop ----
+export const TOOL_UPGRADE = { bonus: 0.05, costs: [2500, 25_000, 250_000] } // per gathering skill
+export const BANK_UPGRADE = { slots: 4, baseCost: 500, costGrowth: 2, levels: 11 } // 12 → 56 slots: everything fits
+
 // ---- Caps and timers ----
 export const MAX_SPEED_BONUS = 0.4
 export const START_BANK_SLOTS = 12
 export const OFFLINE_CAP_MS = 12 * 60 * 60 * 1000
+export const WELCOME_MIN_MS = 60_000 // shorter absences get no "welcome back"
 export const AUTOSAVE_MS = 10_000
 export const TICK_MS = 100
 
 // ---- Generated tables ----
 export const SKILLS: SkillId[] = ['woodcutting', 'mining', 'fishing', 'smithing', 'cooking']
 export const TOOL_SKILL = { axe: 'woodcutting', pickaxe: 'mining', hook: 'fishing' } as const
+
+/** Tool upgrades share their id with the skill they speed up. */
+export const UPGRADES: Record<string, UpgradeDef> = {
+  woodcutting: { id: 'woodcutting', costs: TOOL_UPGRADE.costs },
+  mining: { id: 'mining', costs: TOOL_UPGRADE.costs },
+  fishing: { id: 'fishing', costs: TOOL_UPGRADE.costs },
+  bank: {
+    id: 'bank',
+    costs: Array.from({ length: BANK_UPGRADE.levels }, (_, n) => BANK_UPGRADE.baseCost * BANK_UPGRADE.costGrowth ** n),
+  },
+}
 
 export const ITEMS: Record<string, ItemDef> = {}
 export const ACTIONS: Record<string, ActionDef> = {}
@@ -38,7 +58,8 @@ TIER_LEVEL.forEach((level, tier) => {
   const item = (kind: ItemKind, mat: string) => {
     const id = `${mat}_${kind}`
     const skill = TOOL_SKILL[kind as keyof typeof TOOL_SKILL]
-    ITEMS[id] = { id, kind, mat, tier, ...(skill && { tool: { skill, speedBonus: TIER_TOOL_BONUS[tier] } }) }
+    const sellPrice = TIER_PRICE[tier] * KIND_VALUE[kind]
+    ITEMS[id] = { id, kind, mat, tier, sellPrice, ...(skill && { tool: { skill, speedBonus: TIER_TOOL_BONUS[tier] } }) }
     return id
   }
   const action = (

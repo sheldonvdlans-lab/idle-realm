@@ -8,6 +8,8 @@ export const SKILL_ICON: Record<SkillId, string> = {
   cooking: '🍳',
 }
 
+export const GOLD = '🪙'
+
 export const KIND_ICON: Record<ItemKind, string> = {
   log: '🪵',
   ore: '🪨',

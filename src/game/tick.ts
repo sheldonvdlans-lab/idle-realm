@@ -1,4 +1,4 @@
-import { ACTIONS, ITEMS, MAX_SPEED_BONUS, OFFLINE_CAP_MS, START_BANK_SLOTS } from './config'
+import { ACTIONS, BANK_UPGRADE, ITEMS, MAX_SPEED_BONUS, OFFLINE_CAP_MS, START_BANK_SLOTS, TOOL_UPGRADE } from './config'
 import type { ActionDef, GameState, SkillId } from './types'
 import { levelForXp } from './xp'
 
@@ -10,16 +10,16 @@ export interface TickResult {
   stopped: Blocker | null // set when the action could not continue
 }
 
-export const bankSlots = (_state: GameState) => START_BANK_SLOTS
+export const bankSlots = (state: GameState) => START_BANK_SLOTS + (state.upgrades.bank ?? 0) * BANK_UPGRADE.slots
 
-/** Fraction of action time removed for a skill: best smithed tool in the bank. */
+/** Fraction of action time removed for a skill: shop upgrade plus the best smithed tool in the bank. */
 export function speedBonus(state: GameState, skill: SkillId): number {
   let tool = 0
   for (const id in state.bank) {
     const def = ITEMS[id]?.tool
     if (def?.skill === skill) tool = Math.max(tool, def.speedBonus)
   }
-  return Math.min(MAX_SPEED_BONUS, tool)
+  return Math.min(MAX_SPEED_BONUS, tool + (state.upgrades[skill] ?? 0) * TOOL_UPGRADE.bonus)
 }
 
 export const actionTimeMs = (state: GameState, def: ActionDef) => def.timeMs * (1 - speedBonus(state, def.skill))
