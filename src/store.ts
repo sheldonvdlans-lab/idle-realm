@@ -5,6 +5,7 @@ import { deserialize, newGame, serialize } from './game/save'
 import { advance, type Blocker } from './game/tick'
 import type { GameState } from './game/types'
 
+// ponytail: localStorage only; iOS can evict it, switch to Capacitor Preferences when going native
 const KEY = 'idle-realm-save'
 
 let state = load()
