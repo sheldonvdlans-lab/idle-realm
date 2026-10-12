@@ -314,3 +314,16 @@ dialog li strong {
 dialog .btn {
   width: 100%;
 }
+
+textarea {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+  font: 0.8rem/1.4 ui-monospace, monospace;
+  word-break: break-all;
+  resize: vertical;
+}

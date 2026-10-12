@@ -8,11 +8,12 @@ import { actionName, t } from '../i18n'
 import { notice, update, useGame } from '../store'
 import { BankPanel } from './BankPanel'
 import { GOLD, SKILL_ICON } from './icons'
+import { SettingsPanel } from './SettingsPanel'
 import { ShopPanel } from './ShopPanel'
 import { WelcomeBack } from './WelcomeBack'
 import { Bar, SkillPanel } from './SkillPanel'
 
-const TABS = { skills: '⚒️', bank: '🏦', shop: '🛒' } as const
+const TABS = { skills: '⚒️', bank: '🏦', shop: '🛒', settings: '⚙️' } as const
 type Tab = keyof typeof TABS
 
 export function App() {
@@ -50,6 +51,7 @@ export function App() {
         )}
         {tab === 'bank' && <BankPanel state={state} />}
         {tab === 'shop' && <ShopPanel state={state} />}
+        {tab === 'settings' && <SettingsPanel state={state} />}
       </main>
       {notice.welcome && <WelcomeBack welcome={notice.welcome} />}
       <nav class="tabs">

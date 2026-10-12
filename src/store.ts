@@ -58,6 +58,12 @@ export function update(fn: (s: GameState) => GameState) {
   emit()
 }
 
+/** Swap in an imported save and persist it right away. */
+export function replaceGame(next: GameState) {
+  update(() => next)
+  save()
+}
+
 export function dismissWelcome() {
   notice.welcome = null
   emit()
