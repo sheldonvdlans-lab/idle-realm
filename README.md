@@ -13,6 +13,8 @@ npm run build    # type-check + production build in dist/
 
 `dist/` is a plain static site with relative paths, so it can be served from any folder (GitHub Pages) or wrapped with Capacitor (`webDir: dist`). It installs as a PWA and plays offline after the first visit.
 
+Every push to `main` runs the tests and deploys to GitHub Pages (`.github/workflows/deploy.yml`): https://sheldonvdlans-lab.github.io/idle-realm/
+
 ## Layout
 
 - `src/game/` — pure game logic, no DOM. `config.ts` holds all balance.
