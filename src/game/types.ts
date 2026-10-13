@@ -30,13 +30,19 @@ export interface UpgradeDef {
   costs: number[] // cost of each level; length is the max level
 }
 
+/** An action to run, optionally with a goal. */
+export interface QueuedAction {
+  actionId: string
+  left?: number // runs still to do; absent = keep going until something stops it
+}
+
 export interface GameState {
   version: number
   xp: Record<SkillId, number> // levels are derived from xp, never stored
   bank: Record<ItemId, number> // only items with count > 0
   gold: number
   upgrades: Record<string, number> // upgrade id → level bought
-  active: { actionId: string; progressMs: number } | null
-  queue: string[] // action ids that start, in order, when the active action stops
+  active: (QueuedAction & { progressMs: number }) | null
+  queue: QueuedAction[] // start, in order, when the active action stops
   lastSeen: number // epoch ms of the last tick, drives offline progress
 }

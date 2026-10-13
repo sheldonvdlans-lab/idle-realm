@@ -1,10 +1,10 @@
 import { useState } from 'preact/hooks'
 import { ACTIONS, SKILLS } from '../game/config'
-import { actionTimeMs, dequeue, isGathering, startQueue, stopAction } from '../game/tick'
+import { actionTimeMs, dequeue, neverEnds, startQueue, stopAction } from '../game/tick'
 import type { GameState, SkillId } from '../game/types'
 import { levelForXp } from '../game/xp'
 import { formatNumber } from '../game/format'
-import { actionName, t } from '../i18n'
+import { actionName, stopText, t } from '../i18n'
 import { notice, update, useGame } from '../store'
 import { BankPanel } from './BankPanel'
 import { GOLD, SKILL_ICON } from './icons'
@@ -46,7 +46,7 @@ export function App() {
                 </button>
               ))}
             </nav>
-            <SkillPanel state={state} skill={skill} />
+            <SkillPanel key={skill} state={state} skill={skill} />
           </>
         )}
         {tab === 'bank' && <BankPanel state={state} />}
@@ -76,6 +76,7 @@ function Now({ state }: { state: GameState }) {
         <>
           <span>
             {SKILL_ICON[def.skill]} {actionName(def)}
+            {state.active.left && <small class="muted"> · {t.ui.left(formatNumber(state.active.left))}</small>}
           </span>
           <button class="btn" onClick={() => update(stopAction)}>
             {t.ui.stop}
@@ -86,26 +87,27 @@ function Now({ state }: { state: GameState }) {
         <span class="muted">{t.ui.idle}</span>
       )}
       {stopped && (
-        <small class="warn">
-          {actionName(ACTIONS[stopped.actionId])} · {stopped.actions ? t.ui.stopped : t.ui.skipped}: {t.ui.blocked[stopped.stopped!]}
+        <small class={stopped.stopped === 'done' ? 'muted' : 'warn'}>
+          {actionName(ACTIONS[stopped.actionId])} · {stopText(stopped)}
         </small>
       )}
       {state.queue.length > 0 && (
         <div class="queue">
           <small>{t.ui.queue}</small>
-          {state.queue.map((id, i) => (
+          {state.queue.map(({ actionId, left }, i) => (
             <button
               key={i}
               class="chip"
-              aria-label={`${t.ui.removeFromQueue}: ${actionName(ACTIONS[id])}`}
+              aria-label={`${t.ui.removeFromQueue}: ${actionName(ACTIONS[actionId])}`}
               onClick={() => update((s) => dequeue(s, i))}
             >
-              {SKILL_ICON[ACTIONS[id].skill]} {actionName(ACTIONS[id])} ✕
+              {SKILL_ICON[ACTIONS[actionId].skill]} {actionName(ACTIONS[actionId])}
+              {left && ` ×${formatNumber(left)}`} ✕
             </button>
           ))}
         </div>
       )}
-      {def && isGathering(def) && state.queue.length > 0 && (
+      {state.active && neverEnds(state.active) && state.queue.length > 0 && (
         <div class="queue">
           <small class="warn">⚠️ {t.ui.queueStuck}</small>
           <button class="btn" onClick={() => update(startQueue)}>

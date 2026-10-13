@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'preact/hooks'
 import { ACTIONS, OFFLINE_CAP_MS } from '../game/config'
 import { formatDuration, formatNumber } from '../game/format'
 import { levelForXp } from '../game/xp'
-import { actionName, itemName, t } from '../i18n'
+import { actionName, itemName, stopText, t } from '../i18n'
 import { dismissWelcome, type Welcome } from '../store'
 import { SKILL_ICON } from './icons'
 
@@ -24,22 +24,17 @@ export function WelcomeBack({ welcome: { before, elapsedMs, runs } }: { welcome:
     <dialog ref={ref} onClose={dismissWelcome}>
       <h2>👋 {t.ui.welcome}</h2>
       <p class="muted">{elapsedMs >= OFFLINE_CAP_MS ? t.ui.awayCapped(time) : t.ui.away(time)}</p>
-      {rows.map(({ def, actions, stopped, from, to }, i) => (
+      {rows.map(({ def, from, to, ...run }, i) => (
         <div key={i}>
           <p>
             {SKILL_ICON[def.skill]} {actionName(def)}
-            {actions > 0 && ` × ${formatNumber(actions)}`}
-            {stopped && (
-              <small class="warn">
-                {' '}
-                · {actions ? t.ui.stopped : t.ui.skipped}: {t.ui.blocked[stopped]}
-              </small>
-            )}
+            {run.actions > 0 && ` × ${formatNumber(run.actions)}`}
+            {run.stopped && <small class={run.stopped === 'done' ? 'muted' : 'warn'}> · {stopText(run)}</small>}
           </p>
-          {actions > 0 && (
+          {run.actions > 0 && (
             <ul>
               <li>
-                +{formatNumber(def.xp * actions)} {t.skills[def.skill]} {t.ui.xp}
+                +{formatNumber(def.xp * run.actions)} {t.skills[def.skill]} {t.ui.xp}
                 {to > from && (
                   <strong>
                     {' '}
@@ -49,12 +44,12 @@ export function WelcomeBack({ welcome: { before, elapsedMs, runs } }: { welcome:
               </li>
               {Object.entries(def.outputs).map(([id, n]) => (
                 <li key={id}>
-                  +{formatNumber(n * actions)} {itemName(id)}
+                  +{formatNumber(n * run.actions)} {itemName(id)}
                 </li>
               ))}
               {Object.entries(def.inputs).map(([id, n]) => (
                 <li key={id} class="muted">
-                  −{formatNumber(n * actions)} {itemName(id)}
+                  −{formatNumber(n * run.actions)} {itemName(id)}
                 </li>
               ))}
             </ul>

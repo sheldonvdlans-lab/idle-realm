@@ -1,11 +1,14 @@
 import { ACTIONS, ITEMS, QUEUE_MAX, SKILLS, UPGRADES } from './config'
-import type { GameState } from './types'
+import { validGoal } from './tick'
+import type { GameState, QueuedAction } from './types'
 
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 
 /** One step per old version: MIGRATIONS[n] turns a version n save into version n + 1. */
 const MIGRATIONS: Record<number, (raw: any) => any> = {
   1: (raw) => ({ ...raw, version: 2, queue: [] }), // v2 added the action queue
+  // v3 added goals: queue entries went from action ids to { actionId, left? }
+  2: (raw) => ({ ...raw, version: 3, queue: (Array.isArray(raw.queue) ? raw.queue : []).map((actionId: unknown) => ({ actionId })) }),
 }
 
 export function newGame(now: number): GameState {
@@ -19,6 +22,13 @@ export function newGame(now: number): GameState {
     queue: [],
     lastSeen: now,
   }
+}
+
+/** A known action with a sane goal, or null. */
+function queuedAction(raw: any): QueuedAction | null {
+  if (typeof raw?.actionId !== 'string' || !Object.hasOwn(ACTIONS, raw.actionId)) return null
+  const left = validGoal(raw.left)
+  return left ? { actionId: raw.actionId, left } : { actionId: raw.actionId }
 }
 
 const amount = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0)
@@ -44,12 +54,10 @@ export function deserialize(text: string, now = Date.now()): GameState {
     const level = Math.min(costs.length, Math.floor(amount(raw.upgrades?.[id])))
     if (level) state.upgrades[id] = level
   }
-  const actionId = raw.active?.actionId
-  if (typeof actionId === 'string' && Object.hasOwn(ACTIONS, actionId)) {
-    state.active = { actionId, progressMs: amount(raw.active.progressMs) }
-  }
+  const active = queuedAction(raw.active)
+  if (active) state.active = { ...active, progressMs: amount(raw.active.progressMs) }
   if (Array.isArray(raw.queue)) {
-    state.queue = raw.queue.filter((id: unknown) => typeof id === 'string' && Object.hasOwn(ACTIONS, id)).slice(0, QUEUE_MAX)
+    state.queue = raw.queue.map(queuedAction).filter((a: QueuedAction | null) => a !== null).slice(0, QUEUE_MAX)
   }
   if (Number.isFinite(raw.lastSeen)) state.lastSeen = raw.lastSeen
   return state
