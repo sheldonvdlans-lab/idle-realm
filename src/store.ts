@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { AUTOSAVE_MS, TICK_MS, WELCOME_MIN_MS } from './game/config'
 import { deserialize, newGame, serialize } from './game/save'
-import { advance, type Blocker } from './game/tick'
+import { advance, type Run } from './game/tick'
 import type { GameState } from './game/types'
 
 // ponytail: localStorage only; iOS can evict it, switch to Capacitor Preferences when going native
@@ -11,16 +11,15 @@ const KEY = 'idle-realm-save'
 let state = load()
 const listeners = new Set<() => void>()
 
-/** What happened while the player was away: the state they left and how far its action got. */
+/** What happened while the player was away: the state they left and what each action did. */
 export interface Welcome {
   before: GameState
   elapsedMs: number
-  actions: number
-  stopped: Blocker | null
+  runs: Run[]
 }
 
 export const notice: {
-  stopped: Blocker | null // why the last action stopped by itself; cleared by the next thing the player does
+  stopped: Run | null // the last action that stopped by itself; cleared by the next thing the player does
   welcome: Welcome | null
 } = { stopped: null, welcome: null }
 
@@ -75,10 +74,10 @@ function tickNow() {
   // exactly like reopening the app, so both get the same "welcome back".
   if (document.visibilityState === 'hidden') return
   const before = state
-  const { elapsedMs, actions, stopped, ...result } = advance(state, Date.now())
-  if (stopped) notice.stopped = stopped
-  if (before.active && elapsedMs >= WELCOME_MIN_MS) notice.welcome = { before, elapsedMs, actions, stopped }
-  state = result.state
+  const { elapsedMs, runs, state: next } = advance(state, Date.now())
+  notice.stopped = runs.filter((run) => run.stopped).at(-1) ?? notice.stopped
+  if (runs.length && elapsedMs >= WELCOME_MIN_MS) notice.welcome = { before, elapsedMs, runs }
+  state = next
   emit()
 }
 

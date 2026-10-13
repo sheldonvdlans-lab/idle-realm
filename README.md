@@ -25,6 +25,6 @@ Every push to `main` runs the tests and deploys to GitHub Pages (`.github/workfl
 
 ## TODO (not built yet)
 
-- **Action queue** — after a production action, move on to the next one automatically (smelt until the ore runs out, then go back to mining), so offline hours are not wasted when materials run out.
+- **Gathering targets** — a gathering action never ends by itself, so it can only be the last step of the queue. Let the player set a count ("mine 500, then move on") so gathering can sit in the middle of a chain.
 - **Native storage** — saves live in `localStorage`, which iOS may clear for apps that go unused. Move to Capacitor Preferences when wrapping for the stores.
 - **Late-game gold sink** — everything in the shop costs about 1.86M while a full playthrough earns about 3.7M. Add something that keeps gold meaningful (combat gear, cosmetics, prestige).

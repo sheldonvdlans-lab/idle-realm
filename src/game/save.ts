@@ -1,7 +1,12 @@
-import { ACTIONS, ITEMS, SKILLS, UPGRADES } from './config'
+import { ACTIONS, ITEMS, QUEUE_MAX, SKILLS, UPGRADES } from './config'
 import type { GameState } from './types'
 
-export const SAVE_VERSION = 1
+export const SAVE_VERSION = 2
+
+/** One step per old version: MIGRATIONS[n] turns a version n save into version n + 1. */
+const MIGRATIONS: Record<number, (raw: any) => any> = {
+  1: (raw) => ({ ...raw, version: 2, queue: [] }), // v2 added the action queue
+}
 
 export function newGame(now: number): GameState {
   return {
@@ -11,6 +16,7 @@ export function newGame(now: number): GameState {
     gold: 0,
     upgrades: {},
     active: null,
+    queue: [],
     lastSeen: now,
   }
 }
@@ -21,12 +27,12 @@ export const serialize = (state: GameState) => JSON.stringify(state)
 
 /** Parse a save. Throws on anything that is not a save; unknown or broken fields fall back to defaults. */
 export function deserialize(text: string, now = Date.now()): GameState {
-  const raw = JSON.parse(text)
+  let raw = JSON.parse(text)
   if (typeof raw !== 'object' || raw === null || !Number.isInteger(raw.version) || raw.version < 1) {
     throw new Error('Not a save')
   }
   if (raw.version > SAVE_VERSION) throw new Error('Save is from a newer version of the game')
-  // migrations go here, oldest first: if (raw.version === 1) raw = v1toV2(raw)
+  while (raw.version < SAVE_VERSION) raw = MIGRATIONS[raw.version](raw)
 
   const state = newGame(now)
   for (const skill of SKILLS) state.xp[skill] = amount(raw.xp?.[skill])
@@ -41,6 +47,9 @@ export function deserialize(text: string, now = Date.now()): GameState {
   const actionId = raw.active?.actionId
   if (typeof actionId === 'string' && Object.hasOwn(ACTIONS, actionId)) {
     state.active = { actionId, progressMs: amount(raw.active.progressMs) }
+  }
+  if (Array.isArray(raw.queue)) {
+    state.queue = raw.queue.filter((id: unknown) => typeof id === 'string' && Object.hasOwn(ACTIONS, id)).slice(0, QUEUE_MAX)
   }
   if (Number.isFinite(raw.lastSeen)) state.lastSeen = raw.lastSeen
   return state

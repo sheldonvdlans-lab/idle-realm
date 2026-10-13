@@ -179,8 +179,47 @@ button.card:disabled {
   margin: 8px 0 0;
 }
 
-.now .bar {
+.now .bar,
+.now > small,
+.queue {
   grid-column: 1 / -1;
+}
+
+.queue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.queue small {
+  color: var(--muted);
+}
+
+.queue small.warn {
+  flex: 1;
+  color: var(--warn);
+}
+
+.chip {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.action {
+  display: flex;
+  gap: 8px;
+}
+
+.action .btn {
+  width: 44px;
+  font-size: 1.3rem;
 }
 
 .btn {
@@ -297,9 +336,22 @@ dialog h2 {
   margin-top: 0;
 }
 
+dialog {
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+dialog p {
+  margin: 12px 0 4px;
+}
+
 dialog ul {
   margin: 0 0 16px;
   padding-left: 20px;
+}
+
+dialog form {
+  margin-top: 16px;
 }
 
 dialog li.muted {

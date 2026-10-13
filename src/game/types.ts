@@ -37,5 +37,6 @@ export interface GameState {
   gold: number
   upgrades: Record<string, number> // upgrade id → level bought
   active: { actionId: string; progressMs: number } | null
+  queue: string[] // action ids that start, in order, when the active action stops
   lastSeen: number // epoch ms of the last tick, drives offline progress
 }

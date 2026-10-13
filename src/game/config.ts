@@ -31,6 +31,7 @@ export const BANK_UPGRADE = { slots: 4, baseCost: 500, costGrowth: 2, levels: 11
 // ---- Caps and timers ----
 export const MAX_SPEED_BONUS = 0.4
 export const START_BANK_SLOTS = 12
+export const QUEUE_MAX = 3
 export const OFFLINE_CAP_MS = 12 * 60 * 60 * 1000
 export const WELCOME_MIN_MS = 60_000 // shorter absences get no "welcome back"
 export const AUTOSAVE_MS = 10_000

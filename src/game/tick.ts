@@ -1,13 +1,19 @@
-import { ACTIONS, BANK_UPGRADE, ITEMS, MAX_SPEED_BONUS, OFFLINE_CAP_MS, START_BANK_SLOTS, TOOL_UPGRADE } from './config'
+import { ACTIONS, BANK_UPGRADE, ITEMS, MAX_SPEED_BONUS, OFFLINE_CAP_MS, QUEUE_MAX, START_BANK_SLOTS, TOOL_UPGRADE } from './config'
 import type { ActionDef, GameState, SkillId } from './types'
 import { levelForXp } from './xp'
 
 export type Blocker = 'level' | 'inputs' | 'bankFull'
 
+/** What one action did during a tick. */
+export interface Run {
+  actionId: string
+  actions: number // completed runs; 0 with a `stopped` reason means it was skipped
+  stopped: Blocker | null // set when the action could not start or continue
+}
+
 export interface TickResult {
   state: GameState
-  actions: number // completed runs of the action that was active when the tick started
-  stopped: Blocker | null // set when the action could not continue
+  runs: Run[] // in order: the active action first, then every queued action the tick reached
 }
 
 export const bankSlots = (state: GameState) => START_BANK_SLOTS + (state.upgrades.bank ?? 0) * BANK_UPGRADE.slots
@@ -34,30 +40,63 @@ export function blocker(state: GameState, def: ActionDef): Blocker | null {
   return null
 }
 
+/** Gathering needs no materials, so once it runs nothing ever stops it. */
+export const isGathering = (def: ActionDef) => Object.keys(def.inputs).length === 0
+
+/** Begin the next queued action, or go idle when the queue is empty. */
+function startNext(state: GameState): GameState {
+  const [actionId, ...queue] = state.queue
+  return { ...state, queue, active: actionId ? { actionId, progressMs: 0 } : null }
+}
+
+/** Start an action right now, replacing the current one. The queue stays. */
 export function startAction(state: GameState, actionId: string): GameState {
   const def = ACTIONS[actionId]
   if (!def || blocker(state, def)) return state
   return { ...state, active: { actionId, progressMs: 0 } }
 }
 
-export const stopAction = (state: GameState): GameState => ({ ...state, active: null })
+/** Stop everything: the current action and whatever was queued behind it. */
+export const stopAction = (state: GameState): GameState => ({ ...state, active: null, queue: [] })
+
+/** Why nothing more can be queued, or null. Nothing behind a gathering action would ever run. */
+export function queueClosed(state: GameState): 'gathering' | 'full' | null {
+  if (state.queue.some((id) => isGathering(ACTIONS[id]))) return 'gathering'
+  return state.queue.length >= QUEUE_MAX ? 'full' : null
+}
+
+/** Add an action behind the current one. Materials are only checked when its turn comes. */
+export function enqueue(state: GameState, actionId: string): GameState {
+  const def = ACTIONS[actionId]
+  if (!def || queueClosed(state) || levelForXp(state.xp[def.skill]) < def.level) return state
+  const queued = { ...state, queue: [...state.queue, actionId] }
+  return state.active ? queued : startNext(queued)
+}
+
+export const dequeue = (state: GameState, index: number): GameState => ({
+  ...state,
+  queue: state.queue.filter((_, i) => i !== index),
+})
+
+/** Drop the current action and begin the queue: the way out when the current action never ends. */
+export const startQueue = (state: GameState): GameState => (state.queue.length ? startNext(state) : state)
 
 /**
- * Advance the game by dtMs. Closed form: nothing that sets the action's duration can change
- * while it runs, so 100 ms and 12 h cost the same and give the same result.
+ * Run the active action for dtMs. Closed form: nothing that sets its duration can change while
+ * it runs, so 100 ms and 12 h cost the same. When it has to stop, the queue takes over and the
+ * time it did not use is handed back.
  */
-export function tick(state: GameState, dtMs: number): TickResult {
-  const def = state.active && ACTIONS[state.active.actionId]
-  if (!state.active || !def) return { state, actions: 0, stopped: null }
-
+function runActive(state: GameState, def: ActionDef, dtMs: number) {
   const blocked = blocker(state, def)
-  if (blocked) return { state: stopAction(state), actions: 0, stopped: blocked }
+  if (blocked) return { state: startNext(state), actions: 0, stopped: blocked, leftMs: dtMs }
 
   const time = actionTimeMs(state, def)
-  const total = state.active.progressMs + (Math.max(0, dtMs) || 0)
+  const total = state.active!.progressMs + dtMs
   let n = Math.floor(total / time)
   for (const id in def.inputs) n = Math.min(n, Math.floor(state.bank[id] / def.inputs[id]))
-  if (n === 0) return { state: { ...state, active: { ...state.active, progressMs: total } }, actions: 0, stopped: null }
+  if (n === 0) {
+    return { state: { ...state, active: { actionId: def.id, progressMs: total } }, actions: 0, stopped: null, leftMs: 0 }
+  }
 
   const bank = { ...state.bank }
   for (const id in def.inputs) {
@@ -73,7 +112,26 @@ export function tick(state: GameState, dtMs: number): TickResult {
     active: { actionId: def.id, progressMs: total - n * time },
   }
   const stopped = blocker(next, def)
-  return { state: stopped ? stopAction(next) : next, actions: n, stopped }
+  return stopped
+    ? { state: startNext(next), actions: n, stopped, leftMs: total - n * time }
+    : { state: next, actions: n, stopped, leftMs: 0 }
+}
+
+/** Advance the game by dtMs, walking through the queue as actions stop. */
+export function tick(state: GameState, dtMs: number): TickResult {
+  const runs: Run[] = []
+  let leftMs = Math.max(0, dtMs) || 0
+  // every pass either uses up the time or takes one action off the queue: at most 1 + QUEUE_MAX passes
+  while (state.active) {
+    const def = ACTIONS[state.active.actionId]
+    if (!def) break
+    const step = runActive(state, def, leftMs)
+    if (step.actions || step.stopped) runs.push({ actionId: def.id, actions: step.actions, stopped: step.stopped })
+    state = step.state
+    leftMs = step.leftMs
+    if (!step.stopped) break
+  }
+  return { state, runs }
 }
 
 /** Tick up to wall-clock `now`. Used for live play and offline catch-up alike. */

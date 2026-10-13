@@ -1,6 +1,6 @@
 import { ACTIONS, ITEMS, MAX_LEVEL } from '../game/config'
 import { formatNumber } from '../game/format'
-import { actionTimeMs, blocker, speedBonus, startAction, stopAction } from '../game/tick'
+import { actionTimeMs, blocker, enqueue, queueClosed, speedBonus, startAction, stopAction } from '../game/tick'
 import type { ActionDef, GameState, SkillId } from '../game/types'
 import { levelForXp, xpForLevel } from '../game/xp'
 import { actionName, itemName, t } from '../i18n'
@@ -20,6 +20,7 @@ export function SkillPanel({ state, skill }: { state: GameState; skill: SkillId 
   const to = xpForLevel(level + 1)
   const maxed = level >= MAX_LEVEL
   const bonus = Math.round(speedBonus(state, skill) * 100)
+  const closed = queueClosed(state)
 
   return (
     <section>
@@ -34,6 +35,7 @@ export function SkillPanel({ state, skill }: { state: GameState; skill: SkillId 
         {maxed ? t.ui.maxLevel : `${formatNumber(xp - from)} / ${formatNumber(to - from)} ${t.ui.xp}`}
         {bonus > 0 && ` · ${t.ui.toolBonus(bonus)}`}
       </p>
+      {closed && <p class={closed === 'gathering' ? 'warn' : 'muted'}>{t.ui.queueClosed[closed]}</p>}
       <ul class="list">
         {Object.values(ACTIONS)
           .filter((a) => a.skill === skill)
@@ -50,9 +52,10 @@ function ActionCard({ state, def }: { state: GameState; def: ActionDef }) {
   const blocked = blocker(state, def)
   const time = actionTimeMs(state, def)
   const inputs = Object.entries(def.inputs)
+  const closed = queueClosed(state)
 
   return (
-    <li>
+    <li class="action">
       <button
         class={`card${active ? ' active' : ''}`}
         disabled={!active && !!blocked}
@@ -79,6 +82,15 @@ function ActionCard({ state, def }: { state: GameState; def: ActionDef }) {
           {t.ui.lv} {def.level}
         </span>
         {active && <Bar value={state.active!.progressMs / time} />}
+      </button>
+      <button
+        class="btn"
+        disabled={blocked === 'level' || !!closed}
+        title={closed ? t.ui.queueClosed[closed] : t.ui.addToQueue}
+        aria-label={`${t.ui.addToQueue}: ${actionName(def)}`}
+        onClick={() => update((s) => enqueue(s, def.id))}
+      >
+        +
       </button>
     </li>
   )
